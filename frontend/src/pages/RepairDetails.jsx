@@ -42,8 +42,8 @@ export default function RepairDetails() {
   if (!repair) return <div className="empty-state">Repair record not found.</div>;
 
   const isTechnician = user.role === 'TECHNICIAN' || user.role === 'LEAD_TECH'; const isAdmin = user.role === 'ADMIN'; const isCustomer = user.role === 'CUSTOMER';
-  const nextStatus = { RECEIVED: 'DIAGNOSING', IN_REPAIR: 'QUALITY_CHECK', QUALITY_CHECK: 'READY_FOR_PICKUP', READY_FOR_PICKUP: 'COMPLETED' }[repair.status];
-  const nextLabel = { DIAGNOSING: 'Start diagnosis', QUALITY_CHECK: 'Send to quality check', READY_FOR_PICKUP: 'Mark ready for pickup', COMPLETED: 'Mark completed' }[nextStatus];
+  const nextStatus = { RECEIVED: 'DIAGNOSING', IN_REPAIR: 'READY_FOR_PICKUP', READY_FOR_PICKUP: 'COMPLETED' }[repair.status];
+  const nextLabel = { DIAGNOSING: 'Start diagnosis', READY_FOR_PICKUP: 'Mark ready for pickup', COMPLETED: 'Mark completed' }[nextStatus];
 
   return <><div className="page-heading"><div><div className="eyebrow">REPAIR RECORD / {repair.ticketId}</div><h1>{repair.deviceName}</h1><p>{repair.deviceType} · Created {dateTime(repair.createdAt)}</p></div><div className="heading-actions"><StatusBadge status={repair.status} /><Link className="secondary-button" to={user.role === 'ADMIN' ? '/admin' : user.role === 'TECHNICIAN' ? '/technician' : user.role === 'LEAD_TECH' ? '/lead-tech' : '/customer'}>← Dashboard</Link></div></div>
     {error && <div className="alert error">{error}</div>}{notice && <div className="alert success">{notice}</div>}

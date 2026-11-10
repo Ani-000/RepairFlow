@@ -3,7 +3,6 @@ const labels = {
   DIAGNOSING: 'Diagnosing',
   AWAITING_APPROVAL: 'Awaiting approval',
   IN_REPAIR: 'In repair',
-  QUALITY_CHECK: 'Quality check',
   READY_FOR_PICKUP: 'Ready for pickup',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',

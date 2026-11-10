@@ -75,8 +75,7 @@ public Repair updateStatus(
 
     boolean validTransition = switch (repair.status) {
         case RECEIVED -> newStatus == RepairStatus.DIAGNOSING;
-        case IN_REPAIR -> newStatus == RepairStatus.QUALITY_CHECK;
-        case QUALITY_CHECK -> newStatus == RepairStatus.READY_FOR_PICKUP;
+        case IN_REPAIR -> newStatus == RepairStatus.READY_FOR_PICKUP;
         case READY_FOR_PICKUP -> newStatus == RepairStatus.COMPLETED;
         default -> false;
     };
