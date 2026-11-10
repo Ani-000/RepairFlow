@@ -35,3 +35,4 @@ Thumbs.db
 *.tar.gz
 *.zip
 *.bak
+frontend/src.backup-*/
