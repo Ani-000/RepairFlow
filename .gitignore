@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !.env.template
+backend/ .env
 
 # Node.js
 node_modules/

@@ -64,23 +64,61 @@ public class AdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(AdminUserResponse.from(userRepository.save(user)));
     }
 
-    @PutMapping("/users/{id}/role")
-    public ResponseEntity<?> updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        User actor = currentUserService.getCurrentUser();
-        User target = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        Role newRole;
-        try { newRole = Role.valueOf(body.getOrDefault("role", "").toUpperCase()); }
-        catch (Exception ex) { return ResponseEntity.badRequest().body(Map.of("error", "Invalid role")); }
-        if (newRole == Role.ADMIN) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Additional ADMIN accounts cannot be created or assigned"));
-        }
-        if (target.id.equals(actor.id) && target.role == Role.ADMIN) {
-            return ResponseEntity.badRequest().body(Map.of("error", "You cannot change your own administrator role"));
-        }
-        target.role = newRole;
-        return ResponseEntity.ok(AdminUserResponse.from(userRepository.save(target)));
+    
+@PutMapping("/users/{id}/role")
+public ResponseEntity<?> updateRole(
+        @PathVariable Long id,
+        @RequestBody Map<String, String> body) {
+
+    User actor = currentUserService.getCurrentUser();
+
+    // Only administrators can change staff roles.
+    if (actor.role != Role.ADMIN) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Administrator access required"));
     }
+
+    User target = userRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    // Administrator accounts cannot have their roles changed.
+    if (target.role == Role.ADMIN) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Administrator roles cannot be changed"));
+    }
+
+    Role newRole;
+
+    try {
+        newRole = Role.valueOf(
+                body.getOrDefault("role", "").trim().toUpperCase()
+        );
+    } catch (Exception ex) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Invalid role"));
+    }
+
+    // Only employee accounts can participate in role changes.
+    if (target.role != Role.TECHNICIAN
+            && target.role != Role.LEAD_TECH) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Customer roles cannot be changed"));
+    }
+
+    // Employees can only switch between the two employee roles.
+    if (newRole != Role.TECHNICIAN
+            && newRole != Role.LEAD_TECH) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Employees can only be assigned Technician or Lead Technician roles"));
+    }
+
+    target.role = newRole;
+
+    return ResponseEntity.ok(
+            AdminUserResponse.from(userRepository.save(target))
+    );
+}
+
 
     @Transactional
     @DeleteMapping("/users/{id}")
