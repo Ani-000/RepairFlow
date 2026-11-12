@@ -21,7 +21,9 @@ import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
@@ -31,30 +33,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return "OPTIONS".equalsIgnoreCase(request.getMethod())
+                || "/health".equals(path)
+                || path.startsWith("/api/auth/");
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
         String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            try {
-                Claims claims = jwtService.extractClaims(header.substring(7).trim());
-                String email = claims.getSubject();
-                if (email == null || email.isBlank()) throw new IllegalArgumentException("Invalid token subject");
 
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new IllegalArgumentException("Account not found"));
-
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        user.email, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.role.name())));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } catch (Exception exception) {
-                SecurityContextHolder.clearContext();
-                log.warn("JWT authentication failed for {} {}: {}",
-                        request.getMethod(), request.getRequestURI(), exception.getClass().getSimpleName());
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
-                return;
-            }
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        try {
+            String token = header.substring(7).trim();
+            Claims claims = jwtService.extractClaims(token);
+            String email = claims.getSubject();
+
+            if (email == null || email.isBlank()) {
+                throw new IllegalArgumentException("Invalid token subject");
+            }
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    user.email,
+                    null,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + user.role.name()))
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        } catch (Exception exception) {
+            SecurityContextHolder.clearContext();
+            log.warn("JWT authentication failed for {} {}: {}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    exception.getClass().getSimpleName());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
+            return;
+        }
+
         filterChain.doFilter(request, response);
     }
 }
