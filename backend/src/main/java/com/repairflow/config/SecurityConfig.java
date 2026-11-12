@@ -39,7 +39,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(List.of(
-                "https://repairflow-gamma.vercel.app",
+                "https://repairflow-gamma.vercel.app/login",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://100.67.181.93:8082",
