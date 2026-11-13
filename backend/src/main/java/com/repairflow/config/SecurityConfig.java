@@ -39,7 +39,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(List.of(
-                "https://repairflow-gamma.vercel.app/login",
+                "https://repairflow-gamma.vercel.app",
+                "https://repairflow-git-main-ani-000.vercel.app",
+                "https://repairflow-ecjhye0fj-ani-000.vercel.app",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://100.67.181.93:8082",
@@ -49,18 +51,24 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
+
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(Duration.ofHours(1));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
         return http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
@@ -68,28 +76,45 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout.disable())
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        ))
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                        .authenticationEntryPoint(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                        ))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/admin/technicians")
-                            .hasAnyRole("ADMIN", "LEAD_TECH")
+                        .hasAnyRole("ADMIN", "LEAD_TECH")
+
                         .requestMatchers(HttpMethod.PUT, "/api/admin/repairs/*/technician")
-                            .hasAnyRole("ADMIN", "LEAD_TECH")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "LEAD_TECH")
+
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/api/repairs")
-                            .hasAnyRole("CUSTOMER", "ADMIN")
+                        .hasAnyRole("CUSTOMER", "ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/api/repairs/*/estimate")
-                            .hasAnyRole("TECHNICIAN", "LEAD_TECH", "ADMIN")
+                        .hasAnyRole("TECHNICIAN", "LEAD_TECH", "ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/api/repairs/*/approval")
-                            .hasAnyRole("CUSTOMER", "ADMIN")
+                        .hasAnyRole("CUSTOMER", "ADMIN")
+
                         .requestMatchers(HttpMethod.PUT, "/api/repairs/*/status")
-                            .hasAnyRole("TECHNICIAN", "LEAD_TECH", "ADMIN")
-                        .anyRequest().authenticated())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                        .hasAnyRole("TECHNICIAN", "LEAD_TECH", "ADMIN")
+
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(
+                        jwtFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
                 .build();
     }
 }
