@@ -39,14 +39,14 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(List.of(
-                "https://repairflow-gamma.vercel.app",
-                "https://repairflow-git-main-ani-000.vercel.app",
-                "https://repairflow-ecjhye0fj-ani-000.vercel.app",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://100.67.181.93:8082",
-                "http://homelab.tailada4c8.ts.net:8082"
-        ));
+        "https://repairflow-gamma.vercel.app",
+        "https://repairflow-git-main-ani-000.vercel.app",
+        "https://repairflow-ecjhye0fj-ani-000.vercel.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://100.67.181.93:8082",
+        "http://homelab.tailada4c8.ts.net:8082"
+));
 
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
