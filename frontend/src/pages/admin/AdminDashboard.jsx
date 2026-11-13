@@ -1,5 +1,7 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { adminApi, repairApi } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import StatusBadge from '../../components/StatusBadge';
@@ -37,6 +39,7 @@ export default function AdminDashboard() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [assigningId, setAssigningId] = useState(null);
 
   async function load(isMounted = () => true, showSkeleton = false) {
     if (showSkeleton) setLoading(true);
@@ -89,15 +92,33 @@ export default function AdminDashboard() {
   );
 
   async function assign(repairId) {
-    if (!assignments[repairId]) return;
+    const technicianId = assignments[repairId];
+
+    if (!technicianId) {
+      toast.warning('Please select a technician first.');
+      return;
+    }
+
+    if (assigningId !== null) return;
+
+    setAssigningId(repairId);
+    setError('');
+    setNotice('');
 
     try {
-      await adminApi.assignTechnician(repairId, assignments[repairId]);
-      setNotice('Technician assigned.');
-      setError('');
+      await adminApi.assignTechnician(repairId, technicianId);
+
+      toast.success('Technician assigned successfully!');
+
+      // Refresh dashboard data so the new assignment appears immediately.
       await load();
     } catch (e) {
-      setError(e.message || 'Could not assign technician.');
+      const message = e.message || 'Could not assign technician.';
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setAssigningId(null);
     }
   }
 
@@ -106,6 +127,7 @@ export default function AdminDashboard() {
 
     if (!EMPLOYEE_ROLES.includes(form.role)) {
       setError('Only Technician and Lead Technician accounts can be created here.');
+      toast.error('Invalid employee role.');
       return;
     }
 
@@ -116,12 +138,18 @@ export default function AdminDashboard() {
     try {
       await adminApi.createStaff(form);
       setForm(emptyForm);
-      setNotice(
-        `${form.role === 'LEAD_TECH' ? 'Lead technician' : 'Technician'} profile created.`
-      );
+
+      const message =
+        `${form.role === 'LEAD_TECH' ? 'Lead technician' : 'Technician'} profile created.`;
+
+      setNotice(message);
+      toast.success(message);
+
       await load();
     } catch (e) {
-      setError(e.message || 'Could not create staff profile.');
+      const message = e.message || 'Could not create staff profile.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -130,22 +158,30 @@ export default function AdminDashboard() {
   async function updateRole(id, role) {
     if (!EMPLOYEE_ROLES.includes(role)) {
       setError('Employees can only be assigned Technician or Lead Technician roles.');
+      toast.error('Invalid employee role.');
       return;
     }
 
     const target = employees.find(employee => employee.id === id);
+
     if (!target) {
       setError('Only existing employee accounts can have their roles changed.');
+      toast.error('Employee account not found.');
       return;
     }
 
     try {
       await adminApi.updateRole(id, role);
+
       setNotice('Employee role updated.');
       setError('');
+      toast.success('Employee role updated successfully.');
+
       await load();
     } catch (e) {
-      setError(e.message || 'Could not update employee role.');
+      const message = e.message || 'Could not update employee role.';
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -158,24 +194,39 @@ export default function AdminDashboard() {
 
     try {
       await adminApi.deleteUser(id);
-      setNotice(`${accountType === 'customer' ? 'Customer' : 'Employee'} deleted.`);
+
+      const successMessage =
+        `${accountType === 'customer' ? 'Customer' : 'Employee'} deleted.`;
+
+      setNotice(successMessage);
       setError('');
+      toast.success(successMessage);
+
       await load();
     } catch (e) {
-      setError(e.message || 'Could not delete user.');
+      const errorMessage = e.message || 'Could not delete user.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   }
 
   async function deleteRepair(id) {
-    if (!window.confirm('Permanently delete this repair and its history?')) return;
+    if (!window.confirm('Permanently delete this repair and its history?')) {
+      return;
+    }
 
     try {
       await adminApi.deleteRepair(id);
+
       setNotice('Repair deleted.');
       setError('');
+      toast.success('Repair deleted successfully.');
+
       await load();
     } catch (e) {
-      setError(e.message || 'Could not delete repair.');
+      const message = e.message || 'Could not delete repair.';
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -195,6 +246,7 @@ export default function AdminDashboard() {
           <h1>Operations overview</h1>
           <p>Full control of users, repair requests and technician assignments.</p>
         </div>
+
         <div className="admin-greeting">
           Signed in as <strong>{user.name}</strong>
         </div>
@@ -235,7 +287,9 @@ export default function AdminDashboard() {
               minLength={2}
               maxLength={100}
               value={form.name}
-              onChange={event => setForm(current => ({ ...current, name: event.target.value }))}
+              onChange={event =>
+                setForm(current => ({ ...current, name: event.target.value }))
+              }
             />
           </label>
 
@@ -246,7 +300,9 @@ export default function AdminDashboard() {
               placeholder="name@example.com"
               required
               value={form.email}
-              onChange={event => setForm(current => ({ ...current, email: event.target.value }))}
+              onChange={event =>
+                setForm(current => ({ ...current, email: event.target.value }))
+              }
             />
           </label>
 
@@ -259,7 +315,9 @@ export default function AdminDashboard() {
               minLength={8}
               maxLength={72}
               value={form.password}
-              onChange={event => setForm(current => ({ ...current, password: event.target.value }))}
+              onChange={event =>
+                setForm(current => ({ ...current, password: event.target.value }))
+              }
             />
           </label>
 
@@ -267,14 +325,20 @@ export default function AdminDashboard() {
             <span>Employee role</span>
             <select
               value={form.role}
-              onChange={event => setForm(current => ({ ...current, role: event.target.value }))}
+              onChange={event =>
+                setForm(current => ({ ...current, role: event.target.value }))
+              }
             >
               <option value="TECHNICIAN">Technician</option>
               <option value="LEAD_TECH">Lead Technician</option>
             </select>
           </label>
 
-          <button type="submit" className="primary-button staff-submit" disabled={saving}>
+          <button
+            type="submit"
+            className="primary-button staff-submit"
+            disabled={saving}
+          >
             {saving ? 'Creating profile…' : 'Create profile'}
           </button>
         </form>
@@ -290,6 +354,7 @@ export default function AdminDashboard() {
             <h2>Repair operations</h2>
             <p>Assign technicians, inspect and delete repair records.</p>
           </div>
+
           <span className="count-pill">{repairs.length} records</span>
         </div>
 
@@ -308,54 +373,87 @@ export default function AdminDashboard() {
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {repairs.length === 0 ? (
                   <tr>
                     <td colSpan={6}>
-                      <div className="empty-state compact">No repair records found.</div>
+                      <div className="empty-state compact">
+                        No repair records found.
+                      </div>
                     </td>
                   </tr>
                 ) : repairs.map(repair => (
                   <tr key={repair.id}>
                     <td>
-                      <Link className="ticket-link" to={`/repairs/${repair.id}`}>
+                      <Link
+                        className="ticket-link"
+                        to={`/repairs/${repair.id}`}
+                      >
                         {repair.ticketId}
                       </Link>
-                      <div className="muted table-subtext">{repair.deviceName}</div>
+
+                      <div className="muted table-subtext">
+                        {repair.deviceName}
+                      </div>
                     </td>
+
                     <td>{repair.customerName || '—'}</td>
-                    <td><StatusBadge status={repair.status} /></td>
+
+                    <td>
+                      <StatusBadge status={repair.status} />
+                    </td>
+
                     <td>{repair.technicianName || 'Unassigned'}</td>
+
                     <td>
                       <div className="assign-control">
                         <select
                           aria-label={`Select technician for ${repair.ticketId}`}
                           value={assignments[repair.id] || ''}
-                          onChange={event => setAssignments(current => ({
-                            ...current,
-                            [repair.id]: event.target.value
-                          }))}
+                          disabled={assigningId !== null}
+                          onChange={event =>
+                            setAssignments(current => ({
+                              ...current,
+                              [repair.id]: event.target.value
+                            }))
+                          }
                         >
                           <option value="">Select technician</option>
+
                           {technicians.map(technician => (
-                            <option key={technician.id} value={technician.id}>
+                            <option
+                              key={technician.id}
+                              value={technician.id}
+                            >
                               {technician.name}
                             </option>
                           ))}
                         </select>
+
                         <button
                           type="button"
                           className="small-button"
-                          disabled={!assignments[repair.id]}
+                          disabled={
+                            !assignments[repair.id] ||
+                            assigningId !== null
+                          }
                           onClick={() => assign(repair.id)}
                         >
-                          Assign
+                          {assigningId === repair.id ? 'Assigning…' : 'Assign'}
                         </button>
                       </div>
                     </td>
+
                     <td>
                       <div className="repair-row-actions">
-                        <Link className="table-action" to={`/repairs/${repair.id}`}>View</Link>
+                        <Link
+                          className="table-action"
+                          to={`/repairs/${repair.id}`}
+                        >
+                          View
+                        </Link>
+
                         <button
                           type="button"
                           className="danger-button"
@@ -377,8 +475,11 @@ export default function AdminDashboard() {
         <div className="panel-heading">
           <div>
             <h2>Employee management</h2>
-            <p>Only employee accounts can be switched between Technician and Lead Technician.</p>
+            <p>
+              Only employee accounts can be switched between Technician and Lead Technician.
+            </p>
           </div>
+
           <span className="count-pill">{employees.length} employees</span>
         </div>
 
@@ -395,27 +496,34 @@ export default function AdminDashboard() {
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {employees.length === 0 ? (
                   <tr>
                     <td colSpan={4}>
-                      <div className="empty-state compact">No employee accounts found.</div>
+                      <div className="empty-state compact">
+                        No employee accounts found.
+                      </div>
                     </td>
                   </tr>
                 ) : employees.map(employee => (
                   <tr key={employee.id}>
                     <td>{employee.name}</td>
                     <td>{employee.email}</td>
+
                     <td>
                       <select
                         aria-label={`Change employee role for ${employee.name}`}
                         value={employee.role}
-                        onChange={event => updateRole(employee.id, event.target.value)}
+                        onChange={event =>
+                          updateRole(employee.id, event.target.value)
+                        }
                       >
                         <option value="TECHNICIAN">Technician</option>
                         <option value="LEAD_TECH">Lead Technician</option>
                       </select>
                     </td>
+
                     <td>
                       <button
                         type="button"
@@ -437,8 +545,11 @@ export default function AdminDashboard() {
         <div className="panel-heading">
           <div>
             <h2>Customer details</h2>
-            <p>Customer accounts are read-only here. Customers cannot be converted into employees.</p>
+            <p>
+              Customer accounts are read-only here. Customers cannot be converted into employees.
+            </p>
           </div>
+
           <span className="count-pill">{customers.length} customers</span>
         </div>
 
@@ -455,18 +566,27 @@ export default function AdminDashboard() {
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {customers.length === 0 ? (
                   <tr>
                     <td colSpan={4}>
-                      <div className="empty-state compact">No customer accounts found.</div>
+                      <div className="empty-state compact">
+                        No customer accounts found.
+                      </div>
                     </td>
                   </tr>
                 ) : customers.map(customer => (
                   <tr key={customer.id}>
                     <td>{customer.name}</td>
                     <td>{customer.email}</td>
-                    <td><span className="role-label customer-role">Customer</span></td>
+
+                    <td>
+                      <span className="role-label customer-role">
+                        Customer
+                      </span>
+                    </td>
+
                     <td>
                       <button
                         type="button"
@@ -491,19 +611,33 @@ export default function AdminDashboard() {
               <h2>Protected administrator account</h2>
               <p>Administrator role changes and deletion are disabled.</p>
             </div>
+
             <span className="count-pill">Protected</span>
           </div>
+
           <div className="table-wrap">
             <table className="data-table">
               <thead>
-                <tr><th>Name</th><th>Email</th><th>Role</th><th>Account status</th></tr>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Account status</th>
+                </tr>
               </thead>
+
               <tbody>
                 {administrators.map(admin => (
                   <tr key={admin.id}>
                     <td>{admin.name}</td>
                     <td>{admin.email}</td>
-                    <td><span className="role-label admin-role">{roleLabel(admin.role)}</span></td>
+
+                    <td>
+                      <span className="role-label admin-role">
+                        {roleLabel(admin.role)}
+                      </span>
+                    </td>
+
                     <td>Protected account</td>
                   </tr>
                 ))}
@@ -523,6 +657,7 @@ function Metric({ label, value }) {
         <span>{label}</span>
         <span className="metric-icon" aria-hidden="true">▦</span>
       </div>
+
       <strong>{value}</strong>
       <small>Live database data</small>
     </div>

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/useAuth';
@@ -13,6 +14,9 @@ import LeadTechDashboard from './pages/lead/LeadTechDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import RepairDetails from './pages/RepairDetails';
 import NotFound from './pages/NotFound';
+
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const THEME_STORAGE_KEY = 'repairflow-theme';
 const VALID_THEMES = ['light', 'dark', 'system'];
@@ -38,9 +42,11 @@ function ThemeControl({ theme, setTheme }) {
       <label className="sr-only" htmlFor="repairflow-theme">
         Colour theme
       </label>
+
       <span className="theme-control-icon" aria-hidden="true">
         {theme === 'dark' ? '☾' : theme === 'light' ? '☀' : '◐'}
       </span>
+
       <select
         id="repairflow-theme"
         value={theme}
@@ -57,7 +63,13 @@ function ThemeControl({ theme, setTheme }) {
 
 function RootRedirect() {
   const { user } = useAuth();
-  return <Navigate to={user ? homeForRole(user.role) : '/login'} replace />;
+
+  return (
+    <Navigate
+      to={user ? homeForRole(user.role) : '/login'}
+      replace
+    />
+  );
 }
 
 export default function App() {
@@ -67,7 +79,9 @@ export default function App() {
     const root = document.documentElement;
 
     const applyTheme = () => {
-      const nextTheme = theme === 'system' ? getSystemTheme() : theme;
+      const nextTheme =
+        theme === 'system' ? getSystemTheme() : theme;
+
       root.dataset.theme = nextTheme;
       root.style.colorScheme = nextTheme;
     };
@@ -80,47 +94,74 @@ export default function App() {
       // The selected theme still works for the current session.
     }
 
-    if (theme !== 'system' || !window.matchMedia) return undefined;
+    if (theme !== 'system' || !window.matchMedia) {
+      return undefined;
+    }
 
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const handleSystemChange = () => applyTheme();
 
     if (media.addEventListener) {
       media.addEventListener('change', handleSystemChange);
-      return () => media.removeEventListener('change', handleSystemChange);
+
+      return () =>
+        media.removeEventListener('change', handleSystemChange);
     }
 
     media.addListener(handleSystemChange);
-    return () => media.removeListener(handleSystemChange);
+
+    return () =>
+      media.removeListener(handleSystemChange);
   }, [theme]);
 
   return (
     <>
       <ThemeControl theme={theme} setTheme={setTheme} />
+
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
+
             <Route element={<ProtectedRoute roles={['CUSTOMER', 'ADMIN']} />}>
               <Route path="/customer" element={<CustomerDashboard />} />
               <Route path="/repairs/new" element={<NewRepair />} />
             </Route>
+
             <Route element={<ProtectedRoute roles={['TECHNICIAN']} />}>
               <Route path="/technician" element={<TechnicianDashboard />} />
             </Route>
+
             <Route element={<ProtectedRoute roles={['LEAD_TECH']} />}>
               <Route path="/lead-tech" element={<LeadTechDashboard />} />
             </Route>
+
             <Route element={<ProtectedRoute roles={['ADMIN']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
             </Route>
+
             <Route path="/repairs/:id" element={<RepairDetails />} />
+
           </Route>
         </Route>
+
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      {/* Global toast notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={2500}
+        theme="colored"
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        limit={3}
+      />
     </>
   );
 }
